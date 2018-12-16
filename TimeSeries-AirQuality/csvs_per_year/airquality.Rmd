@@ -1,0 +1,840 @@
+---
+title: "Air Quality"
+author: "Yuqing Feng (yf7cn)"
+date: "2018.11.23"
+output: pdf_document
+---
+
+---
+title: "Air Quality Madrid - ETS & ARIMA"
+author: "Raenish"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 10
+    code_folding: hide
+    fig_height: 7
+    theme: cosmo
+    highlight: tango
+---
+
+<center><img src="https://images.adsttc.com/media/images/5429/81e0/c07a/80c9/ea00/0206/large_jpg/7874144816_59d53153ab_k.jpg?1412006352"></center>
+
+#Introduction
+
+## Pollution
+Air pollution is a tremendous problem in big cities, where health issues and traffic restrictions are continuously increasing.There are some pollutants that casus immense disturbance to environment.Hence we will be exploring the **Air Quality of Madrid** and will forecast it with time series algorithms.
+
+##AQI
+**Air Quality Index**:AQI is a number used by government agencies to communicate to the public how polluted the air currently is or how polluted it is forecast to become.It converts the measured pollutant concentrations in a communities air to a number on a scale of 0 to 500 and above.
+
+**AQI Scale**
+<center><img src="https://addins.kwwl.com/blogs/weather/wp-content/uploads/2017/11/3.jpg"></center>
+
+
+Note:Each pollutant's AQI scale is based on measurement of every n hours recorded by stations.I am not sure about each scaling.So I have determined AQI measure based on each hour as given in dataset.We will see it in upcoming sections.
+
+##Four pollutants
+There are four major pollutants that cause threat to human health.
+
+* <span style="color:darkblue">**O3 (Ground-level Ozone)**</span>
+* <span style="color:darkblue">**PM10 (Particulate Matter (soot and dust))**</span>
+* <span style="color:darkblue">**SO2 (Sulphur Dioxide)**</span>  
+* <span style="color:darkblue">**NO2 (Nitrogen Dioxide)**</span>
+
+###O3
+**Define**: Ozone is a gas that is formed when nitrogen oxides react with a group of air pollutants known as 'reactive organic substances' in the presence of sunlight.
+
+**Source**: Emitted by cars, power plants, industrial boilers, refineries, chemical plants.
+
+**Effect**: Chest pain, coughing, throat irritation, and airway inflammation.
+
+Know more about O3 and its effects in air [here](https://www.epa.gov/ozone-pollution/basic-information-about-ozone)
+
+###PM
+**Define**: Besides gaseous pollutants, the atmosphere can also be polluted by particles. These particles have a divergent composition and size and are sometimes called aerosols. They are often catalogued as 'floating dust', but are best known as particulate matter (PM).
+
+**Source**: Formed from construction sites, unpaved roads, fields, smokestacks or fires.
+
+**Effect**: Irregular heartbeat,aggravated asthma,decreased lung function.
+
+Know more about PM10 and its effect in air [here](https://www.epa.gov/pm-pollution/particulate-matter-pm-basics)
+
+###NO2
+**Define**: Nitrogen Dioxide is gaseous air pollutants which is released mainly during fuel combustion from the reaction of nitrogen and oxygen gases.
+
+**Source**: In cities comes from motor vehicle exhaust (about 80%),petrol, metal refining, electricity generation from coal-fired power stations.
+
+**Effect**: Coughing, wheezing or difficulty breathing
+
+Know more about NO2 and its effects in air [here](https://www.epa.gov/no2-pollution/basic-information-about-no2)
+
+###SO2
+**Define**: Sulphur Dioxide is a colorless gas or liquid with a strong, choking odor.Major component of acid rain.
+
+**Source**: Burning of fossil fuels by power plants and other industrial facilities.Also from volcanoes, locomotives, ships and other vehicles.
+
+**Effect**: Burning sensation in the nose and throat.People with asthma may be sensitive to changes in respiratory effects.
+
+Know more about SO2 and its effects in air [here](https://www.epa.gov/so2-pollution/sulfur-dioxide-basics#what%20is%20so2) 
+
+
+##Notebook
+In this notebook,we will dig more on these 4 pollutants.We will look at daily,monthly flow of them with some EDA.Parallely,We will concentrate on AQI measure of these pollutants.Finally we will undergo time series algorithms like **ARIMA** & **ETS** on Ozone pollutant.
+
+
+#Data
+
+##Packages
+
+Essential R libraries required for this notebook 
+```{r,package,message=FALSE,warning=FALSE}
+library(tidyverse)  # metapackage with lots of helpful functions
+library(data.table) # table,matrix
+library(lubridate)  # date
+library(gridExtra)  # ggplot functions
+library(plotly)     # interactive graphs    
+library(scales)     # scale axis
+library(fBasics)    # for base statistics
+library(reshape)    # long and wide data
+library(ggrepel)    # ggplot label
+library(knitr)      # for html table
+library(ggfortify)  # autoplot(time series ggplot)
+library(forecast)   # forecast time series 
+```
+
+##Load Data
+
+Data from [Air Quality in Madrid (2001-2018)](https://www.kaggle.com/decide-soluciones/air-quality-madrid)
+```{r,data,message=FALSE,warning=FALSE}
+madrid_2001 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2001.csv")
+madrid_2002 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2002.csv") 
+madrid_2003 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2003.csv")
+madrid_2004 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2004.csv")
+madrid_2005 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2005.csv")
+madrid_2006 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2006.csv")
+madrid_2007 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2007.csv")
+madrid_2008 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2008.csv")
+madrid_2009 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2009.csv")
+madrid_2010 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2010.csv")
+madrid_2011 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2011.csv")
+madrid_2012 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2012.csv")
+madrid_2013 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2013.csv")
+madrid_2014 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2014.csv")
+madrid_2015 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2015.csv")
+madrid_2016 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2016.csv")
+madrid_2017 <- read.csv("../input/csvs_per_year/csvs_per_year/madrid_2017.csv")
+
+station<-read.csv('../input/stations.csv')
+```
+
+##Merge Data
+
+* There are **18 years** data found in this dataset.But we exclude *2018* dataset here.And we will forecast for year 2018,2019.
+* Each observation is based on **an hour**.
+* Each record is measured in **ug/m3**(Micrograms per Cubic Meter of Air).
+
+We have to notice about pollutant values because there are **39 unique station** (after merging all years dataset) which generates the pollutant level at same time.This results in production of pollutant level from different station which are localized in different places.
+
+```{r,merge}
+#Merging all year dataset
+madrid_18<-rbindlist(list(madrid_2001,madrid_2002,madrid_2003,madrid_2004,
+                                     madrid_2005,madrid_2006,madrid_2007,madrid_2008,madrid_2009,
+                                     madrid_2010,madrid_2011,madrid_2012,madrid_2013,
+                                  madrid_2014,madrid_2015,madrid_2016,madrid_2017), fill = TRUE)
+                                  
+madrid_18<-as.data.frame(madrid_18)
+head(madrid_18)
+```
+
+##Date
+
+Range of date available from all dataset
+```{r,range}
+#Ordering by date
+madrid_final<-madrid_18[with(madrid_18, order(date)),]
+madrid_final$only_date<-as.Date(madrid_18$date)
+
+madrid_final$date<-as.POSIXct(madrid_final$date,format = "%Y-%m-%d %H:%M:%S", tz='CET')
+madrid_final$only_hour<-format(madrid_final$date, "%H")
+madrid_final$only_month<-format(madrid_final$date, "%m")
+madrid_final$only_year<-format(madrid_final$date, "%Y")
+
+range(madrid_final$date)
+```
+Since we have excluded 2018 data,we find range till 2017.**madrid_final** will be our final dataframe which upholds all data including formatted date values.
+
+##NA
+```{r,na}
+madrid_four<-madrid_final[,c('O_3','PM10','NO_2','SO_2')]
+na_df<-data.frame(percent=round(colSums(is.na(madrid_four))/nrow(madrid_four)*100))
+na_df$poll <- rownames(na_df)
+na_df$pollutant<-factor(na_df$poll, as.character(na_df$poll))
+
+ggplot(na_df, aes(pollutant, percent,fill=pollutant))+
+geom_bar(stat="identity") +scale_fill_manual(values = c("magenta3","goldenrod3","brown","lightslateblue"))+
+geom_text(data=na_df, aes(label=paste0(percent,"%"),
+                               y=percent+0.7), size=4)+
+ labs(x = "Pollutants", y = "Percentage", 
+         title = "Percentage of NAs in Four Pollutants")
+
+```
+
+NAs found here are values generated by air quality stations.There are more than 20% NAs found in O_3, PM10 ,SO2 and NO2 contains only 1%.
+
+##Summary 
+
+Summary based on all observations found in dataset
+```{r,summary,echo=FALSE,results='asis'}
+madrid_stat<-madrid_final[,c('O_3','PM10','NO_2','SO_2')]
+mad_stat<-data.frame(basicStats(madrid_stat)[c("Minimum","Mean","1. Quartile", "Median","3. Quartile", "Maximum","Stdev"),])
+kable(mad_stat)
+
+```
+
+We could see there is a <span style="color:orange">*huge difference between Median and Maximum values*</span>.Are there many outliers or suspected outliers present? Let us clarify on this from upcoming sections. 
+
+#Insight{.tabset .tabset-fade .tabset-pills}
+
+Before going to time series flow and prediction,it would be ideal to know how widely is my data distributed with wide range of values.
+
+Note:I have taken all values generated by every stations and omitted NAs.
+
+##Before Aggregation
+```{r,bef_aggreg}
+melt_madrid <- melt(madrid_final,id.vars='date', measure.vars=c('O_3','PM10','NO_2','SO_2'))
+four_box_obs<-ggplot(na.omit(melt_madrid),aes(x=variable, y=value, color=variable)) +
+      geom_boxplot()+ coord_flip()+
+    scale_colour_manual(values=c("magenta3","goldenrod3","brown","lightslateblue"))+
+        theme(legend.position="none")+scale_y_continuous(breaks = seq(0, 700, by = 50))+
+       labs(title="Distribution of pollutants",x='Pollutants',y='ug/m3')
+
+four_hist_obs<-ggplot(na.omit(melt_madrid),aes(x = value,fill=variable)) + 
+    facet_wrap(~variable, nrow = 1) + 
+    geom_histogram(binwidth=20)+
+    scale_fill_manual(values=c("magenta3","goldenrod3","brown","lightslateblue"))+
+  theme(legend.position="none")+
+    labs(x='ug/m3',y='Pollutants')
+grid.arrange(four_box_obs,four_hist_obs,nrow=2)
+```
+From above,we find that there are too many outliers found on these pollutants.We cant say them as outlier instead can call them as high unexpected value. *Just imagine a day of celebrity visit or an announced function arranged in a populated city where dense air pollution might have occured due to heavy traffic from huge number of vehicles.*
+
+##After Aggregation
+
+Here,I have taken the maximum value for each day and averaged it for each month.Say,<span style="color:green">Average(max(Jan 01),max(Jan 02)...max(Jan 31)).</span>.
+
+<span style="color:red">*Why averaged max instead mean?*</span>  
+
+There are two thing to consider here
+
+* My ideal thought in this is to see maximum cause done by air pollutant per day.
+* Secondly,There can be peak hours in a day where values can go higher and drop down all of sudden.If we average for all those values from a day,it could be non relevant.
+
+```{r,after_aggreg,message=FALSE,warning=FALSE}
+max_pollutants_per_day<-madrid_final%>%
+     as.data.frame %>%
+    select('date','O_3','PM10','NO_2','SO_2')%>%
+      mutate(date_ymd=as.Date(date,format="%Y-%m-%d"))%>%
+           group_by(date_ymd)%>%
+         summarise(O_3=max(O_3,na.rm=TRUE),
+                  PM10=max(PM10,na.rm=TRUE),
+                  NO_2=max(NO_2,na.rm=TRUE),
+                  SO_2=max(SO_2,na.rm=TRUE))
+max_pollutants_df<-as.data.frame(max_pollutants_per_day)
+melt_madrid_max_pollutants <- melt(max_pollutants_df,id.vars='date_ymd', measure.vars=c('O_3','PM10','NO_2','SO_2'))
+four_box_daily_max<-ggplot(melt_madrid_max_pollutants,aes(x=variable, y=value, color=variable)) +
+      geom_boxplot()+ coord_flip()+
+    scale_colour_manual(values=c("magenta3","goldenrod3","brown","lightslateblue"))+
+        theme(legend.position="none")+scale_y_continuous(breaks = seq(0, 700, by = 50))+
+       labs(title="Distribution of pollutants on Monthly Average values",x='Pollutants',y='ug/m3')
+
+four_hist_daily_max<-ggplot(melt_madrid_max_pollutants,aes(x = value,fill=variable)) + 
+    facet_wrap(~variable, nrow = 1) + 
+    geom_histogram(binwidth=20)+
+    scale_fill_manual(values=c("magenta3","goldenrod3","brown","lightslateblue"))+
+  theme(legend.position="none")+
+    labs(x='ug/m3',y='Count')
+
+grid.arrange(four_box_daily_max,four_hist_daily_max,nrow=2)
+```
+
+After aggregating,we could see that the plot are bit more normalized comparitve to previous.But still we find some outliers in this case.
+
+#Series Flow-Four Pollutants{.tabset .tabset-fade .tabset-pills}
+
+From previous section,we saw the distribution of four pollutants.Now we will see the time series flow for the same.
+
+##Ozone
+```{r,maxo3}
+plot_pollutant<-function(pol,title,colour){
+pol<-enquo(pol)
+date_df<-madrid_final%>%
+            mutate(date_ymd=as.Date(date,format="%Y-%m-%d"))%>%
+           group_by(date_ymd)%>%
+         summarise(max_emission=max(!!pol,na.rm=TRUE))
+
+plot1<-ggplot(data=date_df,aes(x=date_ymd,y=max_emission))+geom_line(color=colour)+
+scale_x_date(breaks = seq(as.Date("2001-01-01"), as.Date("2018-01-01"), by="6 months"),labels = date_format("%b-%y"))+
+xlab('Date')+ylab('ug/m3')+ggtitle(paste('Daily Maximum Emission of',title))+
+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="none")
+
+month_df<-date_df%>%
+    mutate(y_m_d=paste(substr(date_ymd,1,nchar(date_ymd)+2),"-01"))%>%
+    group_by(y_m_d)%>%
+   summarise(avg_emission=mean(max_emission,na.rm=TRUE))
+
+
+plot2<-ggplot(data=month_df,aes(x=as.Date(y_m_d, format = "%Y - %m - %d"),y=avg_emission))+geom_line(color=colour)+
+scale_x_date(breaks = seq(as.Date("2001-01-01"), as.Date("2018-01-01"), by="6 months"), date_labels = "%b-%y")+
+xlab('Date')+ylab('ug/m3')+ggtitle(paste('Monthly Average Emission of',title))+
+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="none")
+grid.arrange(plot1,plot2,nrow=2)
+}
+plot_pollutant(O_3,"Ozone","magenta3")
+
+```
+*Finding* : There is hike in every july and august months.We will see if this factor affects time series or not.More traffic congestion might be reason for this.**It reaches beyond 120 which can be serious for sensitive persons.**
+
+##Particulate Matter
+```{r,maxpm}
+plot_pollutant(PM10,"Particulate Matter","goldenrod3")
+```
+*Findings*:Dust remains so **high till 2008**.For last one decade,it is little improvised.But still,we can see a little hike in every summer season same as Ozone
+
+##Nitrogen Dioxide
+```{r,maxno}
+plot_pollutant(NO_2,"Nitrogen Dioxide","brown")
+```
+*Findings*:We could see more irregular fluctuations and some hikes in winter season.Combustion and pollution from vehicles are constantly produced.
+
+##Sulphur Dioxide
+```{r,maxso}
+plot_pollutant(SO_2,"Sulphur Dioxide","lightslateblue")
+```
+*Finding*: There is hike in every winter season.Series contains more irregular fluctautions too. 
+
+#More Series Flow
+
+##Monthly Series for all years
+I have taken the maximum value of each day and averaged it for all months.The values are scaled or performed log.We saw the same plots in previous section.Let's have a look at it all at a time. 
+
+```{r,monthly}
+plot_scale_monthly <- function(pol,title,colour) {
+    pol <- enquo(pol)
+    
+daily_max<-madrid_final%>%
+      mutate(date_ymd=as.Date(date,format="%Y-%m-%d"))%>%
+           group_by(date_ymd)%>%
+         summarise(max_emission=max(!!pol,na.rm=TRUE))
+ month_avg<-daily_max%>%
+     mutate(y_m_d=paste(substr(date_ymd,1,nchar(date_ymd)+2),"-01"))%>%
+    group_by(y_m_d)%>%
+   summarise(avg_emission=mean(max_emission,na.rm=TRUE))
+
+ggplot(data=month_avg,aes(x=as.Date(y_m_d,format="%Y - %m - %d"),y=scale(avg_emission)))+ geom_line(color=colour)+
+    scale_x_date(breaks = seq(as.Date("2001-01-01"), as.Date("2018-01-01"), by="12 months"), date_labels = "%Y")+
+xlab('')+ylab(title)+
+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="none")   
+}
+
+
+p1<-plot_scale_monthly(O_3,"O_3","magenta3")
+p2<-plot_scale_monthly(PM10,"PM10","goldenrod3")
+p3<-plot_scale_monthly(NO_2,"NO_2","brown")
+p4<-plot_scale_monthly(SO_2,"SO_2","lightslateblue")
+grid.arrange(p1,p2,p3,p4,nrow=4,top = "Monthly Averaged on Daily Maximum Values")
+```
+
+##Monthly Series
+
+Series contains maximum values of each month among every year.<span style="color:green">Max(Jan 2001 OR Jan 2002 OR....Jan 2017)</span>.
+```{r,monthlyseries}
+pol_each_month<-function(pol,title,colour){
+    pol=enquo(pol)
+each_month_pol_df<-madrid_final%>%
+    select('only_month','date','O_3','PM10','NO_2','SO_2')%>%
+   mutate(month=as.Date(paste0("2015-",madrid_final$only_month,"-01"),"%Y-%m-%d"))%>%
+  group_by(month)%>%
+  summarise(count=max(!!pol,na.rm=TRUE))
+ggplot(each_month_pol_df,aes(month,count))+geom_line(color=colour)+
+scale_x_date(breaks = seq(as.Date("2015-01-01"), as.Date("2015-12-01"), by="1 month"), date_labels = "%b")+
+    xlab('')+ylab(title)
+}
+
+m1<-pol_each_month(O_3,"O_3","magenta3")
+m2<-pol_each_month(PM10,"PM10","goldenrod3")
+m3<-pol_each_month(NO_2,"NO_2","brown")
+m4<-pol_each_month(SO_2,"SO_2","lightslateblue")
+grid.arrange(m1,m2,m3,m4,nrow=4,top = "Max for Each Month")
+```
+As we saw from Section 4,We could see the same expected hikes here for each pollutants.
+
+##Hourly Series
+
+Series contains maximum value recorded for each hour.<span style="color:green">Max(01-01-2001 01AM,02-01-2001 01AM...,31-12-2017 01AM)</span>
+```{r,hourly}
+pol_each_month<-function(pol,title,colour){
+    pol=enquo(pol)
+
+each_hour_pol_df<-madrid_final%>%
+    select('only_hour','date','O_3','PM10','NO_2','SO_2')%>%
+  group_by(only_hour)%>%
+  summarise(count=max(!!pol,na.rm=TRUE))
+    
+ ggplot(each_hour_pol_df,aes(as.numeric(only_hour),count))+geom_line(color=colour)+
+    scale_x_continuous(breaks=seq(0,23,1), limits=c(0,23)) +
+    xlab('')+ylab(title)
+}
+
+h1<-pol_each_month(O_3,"O_3","magenta3")
+h2<-pol_each_month(PM10,"PM10","goldenrod3")
+h3<-pol_each_month(NO_2,"NO_2","brown")
+h4<-pol_each_month(SO_2,"SO_2","lightslateblue")
+grid.arrange(h1,h2,h3,h4,nrow=4,top = "Max for Each Hour")
+```
+This plot clearly describes that the pollution effect starts from late noon.
+
+
+
+#Time Series
+
+* In short,Time series is sequence of numerical data points in successive order.
+
+* Time series analysis can be useful to see how a given asset, security or economic variable changes over time. 
+
+* Time series forecasting uses information regarding historical values and associated patterns to predict future activity. 
+
+* As with all forecasting methods, success is not guaranteed.
+
+* Ex:Daily closing stock prices, Weekly orders, Monthly overheads, Yearly income.
+
+There is a saying  based on forecasting :**_“You ‘ll never get it right but you can always get it less wrong”._**
+
+Note:I am going to elaborate time series and its methods to forecast in a very short manner.Utilize upcoming sections for a reference purpose only.
+
+##Types
+
+There are two types of time series- **Stationary** & **Non Stationary**
+
+###Stationary
+
+* Mean, variance, autocorrelation of time series are all constant over time.
+
+* Ex: Temperature data which stays with constant values over period of time.
+
+###Non Stationary
+
+* Time series which are not stationary.
+
+* Ex: Stock market data with random fluctuations.
+
+##Components
+
+Components are the behaviour found inside time series.There are four types - **Trend,Seasonal,Cyclic,Random.**
+
+###Trend
+
+* Overall persistent long term upward or downward movement.
+
+* Ex: Population stable increase
+
+###Seasonal
+
+* Regular periodic fluctuations usually within 12 months.
+
+* Ex: High peak of sales during Christmas every year.
+
+###Cyclic
+
+* Repeated swing or movements over more than one.
+
+* Rises and falls that are not of fixed period.
+
+* Ex: Sales
+
+###Random
+
+* Irregular and residual fluctuations.Short term and non repeating
+
+* Due to nature or accident
+
+* Ex:Market Value
+
+##Terminologies
+
+There are some basic terminologies used in terms of time series algorithms.
+
+* **Lag** – Calculates & stores past values of time series.
+
+* **Differencing** - Difference between current value(Yt) and previous one(Yt-1).      
+
+* **Moving Average** – Average Values of time series with (k) Period component.
+
+* **Auto-regressive** - Future values are estimated based on a weighted sum of past values
+
+* **Smoothing** – Weighted average of previous observation.
+
+* **Alpha (level)** - Smoothed value at each end of each period.
+
+* **Beta (trend)** – Smoothed average growth at each end of each period.
+
+* **Gamma(season)** - Smoothed peak value at certain time of each period.  
+
+##Two Major Categories
+
+###ETS (Exponential smoothing state space model)
+
+* Data assigns exponentially decreasing weights for newest to oldest observations.
+
+* In other words, the older the data, the less priority (“weight”) the data is given; newer data is seen as more relevant and is assigned more weight.
+
+* Values of alpha that are close to 0 mean that little weight is placed on the most recent observations when making forecasts of future values
+
+* There are some time series algorithms under ets model:
+
+    * *Simple ETS model* - based on alpha parameter
+    * *Holt trend model* - based on alpha and beta(trend) parameters
+    * *Holtwinters model* - based on alpha ,beta and gamma(seasonal) parameters
+
+###ARIMA (Auto Regressive Integrated Moving Average)
+
+* Forecasting technique that projects the future values of a series based entirely on its own inertia.
+
+* Applicable for stationary models only.
+
+##Traditional Procedure to chhoose model
+
+* Step 1:Identify through visual perception whether series has _seasonality_ or _trend_
+
+* Step 2:Identify whether decomposition required for _additive_ or _multiplicative_ model,log transform the multiplicative model if needed.
+
+* Step 3:Test appropriate algorithm: 
+```{r,traditional,echo=FALSE,results='asis'}
+alg<-data.frame(Model=c("Simple Moving Average","Seasonal Adjustment","Simple Exponential Smoothing","Holt Exponential Smoothing","Holtwinters Exponential Smoothing","ARIMA"),
+                Seasonal=c("No","Yes","No","No","Yes","Yes"),Trend=c("Yes","Yes","Yes","Yes","Yes","Yes"),Correlation=c("No","No","No","No","No","Yes"))
+kable(alg)
+```
+
+* Step 4:
+    * Perform any of statistical test to verify correct model you have selected.
+    * Train vs Test( MAPE)
+    * Ljung – Box Test
+    * Forecast Errors – standard deviation.
+    * Auto Correlation Function(ACF)
+    * Partial Auto Correlation Function(PACF)
+
+* Step 5: Repeat Step 3 & 4 if necessary.    
+
+##MAPE(Mean Absolute Percentage Error)
+
+* Measure of prediction accuracy of a forecasting method in statistics.
+
+* M=100/n  ∑n t=1  |At-Ft/At|
+    
+    * At- Actual value of series
+     
+    * Ft- forecast value of series
+
+* Conditions where MAPE will not work:
+
+    * It cannot be used if there are zero values
+    
+    * For forecasts which are too low the percentage error cannot exceed 100%, but for forecasts which are too high there is no upper limit to the percentage error
+
+Function for MAPE
+```{r,mape}
+MAPE<-function(actual,pred){
+mean(abs(actual-pred)/actual)
+}
+```
+##Forecast Error - Standard Deviation
+
+Function for plotting Forecast Error
+```{r,plotforerror}
+plotForecastErrors <- function(forecasterrors)
+{
+  # make a histogram of the forecast errors:
+  mybinsize <- IQR(forecasterrors)/4
+  mysd   <- sd(forecasterrors)
+  mymin  <- min(forecasterrors) - mysd*5
+  mymax  <- max(forecasterrors) + mysd*3
+  # generate normally distributed data with mean 0 and standard deviation mysd
+  mynorm <- rnorm(10000, mean=0, sd=mysd)
+  mymin2 <- min(mynorm)
+  mymax2 <- max(mynorm)
+  if (mymin2 < mymin) { mymin <- mymin2 }
+  if (mymax2 > mymax) { mymax <- mymax2 }
+  # make a red histogram of the forecast errors, with the normally distributed data overlaid:
+  mybins <- seq(mymin, mymax, mybinsize)
+  hist(forecasterrors, col="red", freq=FALSE, breaks=mybins)
+  # freq=FALSE ensures the area under the histogram = 1
+  # generate normally distributed data with mean 0 and standard deviation mysd
+  myhist <- hist(mynorm, plot=FALSE, breaks=mybins)
+  # plot the normal curve as a blue line on top of the histogram of forecast errors:
+  points(myhist$mids, myhist$density, type="l", col="blue", lwd=2)
+}
+```
+
+#Time Series on Madrid
+
+Initially let me begin with monthly data of Ozone pollutant.
+
+* The time series data is taken from average of every month(31 days) from daily maximum value of pollutant(Max(all observation in a day)).
+* The time series period or frequency is set in monthly manner.Frequency =12.
+* The range starts from Jan 2001 to Dec 2017.(204 months)
+* The forecast will be for Jan 2018 to Dec 2019(24 months) 
+
+
+**Time Series**
+```{r,poll_ts}
+pollutant<-madrid_final%>%
+     as.data.frame %>%
+      mutate(date_ymd=as.Date(date,format="%Y-%m-%d"))%>%
+           group_by(date_ymd)%>%
+         summarise(max_pol=max(O_3,na.rm=TRUE))%>% # Can change the pollutant name here.Rest all codes works without change
+    as.data.frame %>%
+    mutate(y_m=paste(substr(date_ymd,1,nchar(date_ymd)+2),"-01"))%>%
+    group_by(y_m)%>%
+   summarise(avg_emission=mean(max_pol,na.rm=TRUE))
+
+
+pol_flow<-data.frame("date"=as.Date(pollutant$y_m,format="%Y - %m - %d"),"count"=pollutant$avg_emission)
+  
+#converting to time series    
+pol_ts<-ts(pol_flow$count,frequency = 12,start = c(2001,01))
+
+#ggplot format of ts plot    
+autoplot(pol_ts,ts.colour ="magenta3") +xlab('Date')+ylab('Count')+ggtitle('Time Series of Ozone Pollutant')
+```
+
+**Decomposition of time series **
+```{r,decompose}
+pol_ts_decompose<-decompose(pol_ts)
+
+actual<-autoplot(pol_ts_decompose$x)+xlab("Year")+ylab("Count")+ggtitle("Actual time series of ozone")
+seas<-autoplot(pol_ts_decompose$seasonal)+xlab("Year")+ylab("Count")+ggtitle("Seasonality time series of ozone")
+tren<-autoplot(pol_ts_decompose$trend)+xlab("Year")+ylab("Count")+ggtitle("Trend time series of ozone")
+grid.arrange(actual,seas,tren,ncol=1,top="Decomposition of Ozone time series")
+```
+We could find that there is little seasonality effect and there is slight trend factor at very end of time.So we will perform **ETS** and **ARIMA** series.Also we find that it is **additive model** .We will undergo traditional way of forecasting which we saw at **Section 6.5**
+
+#ARIMA
+
+**Training Vs Tesing**
+```{r,aritrain}
+train_ts<-ts(pol_ts,start = c(2001,01),end=c(2015,12),frequency = 12)
+train_pol_fit_arima<-auto.arima(train_ts)
+train_pol_fit_arima
+train_forecast_arima<-forecast(train_pol_fit_arima,24)
+```
+auto.arima has chosen seasonal parameters of [1,1,2].There is liitle chance of seasonality in this series.
+
+**Plot-Traning vs Testing**
+
+* Training period- Jan 2001 to  Dec 2015
+* Testing period - Jan 2016 to Dec 2017
+
+```{r,aritrainplot}
+train_forecast_arima_df<-data.frame(train_forecast_arima)
+train_forecast_arima_pt_forecast<-train_forecast_arima_df$Point.Forecast
+
+forecast_train_arima<-data.frame("x"=as.Date(pol_flow$date[181:204],format="%Y - %m - %d"),"y"=train_forecast_arima_pt_forecast)
+actual_train_arima<-data.frame("x"=as.Date(pol_flow$date,format="%Y - %m - %d"),"y"=pol_flow$count)
+
+ggplot(forecast_train_arima,aes(x,y))+geom_line(aes(color="First line")) +
+  geom_line(data = actual_train_arima,aes(color="Second line"))+xlab("Year")+ylab("Count")+
+  labs(colors="Series")+ggtitle("Training Vs Testing plot")+
+  scale_colour_manual(values = c("red","green"), 
+                      labels=c("Forecast", "Actual"))
+
+```
+<span style="color:green">Green Line</span>:This indicates the training period of ozone time series.
+
+<span style="color:red">Red Line</span>:This indicates the forecasted or testing period of ozone time series
+
+From naked view,we could see that the forecasted values are very close to actual values.We will know the level of difference or percentage error by MAPE formula.
+
+**MAPE**
+```{r,arimape}
+MAPE(pol_flow$count[181:204],train_forecast_arima_pt_forecast)
+```
+MAPE less than 5% is significant in forecasting measures.But still we got **7.1%** which is reasonable.
+
+**Ljung-Box Test**
+```{r,aribox}
+Box.test(train_forecast_arima$residuals, lag=24, type="Ljung-Box")
+```
+pvalue is 0.70.There is little evidence of non-zero autocorrelations at lags 1-24.
+
+**Plot Error Function**
+```{r,arierror}
+train_forecast_arima$residuals<-na.omit(train_forecast_arima$residuals)
+plotForecastErrors(train_forecast_arima$residuals)
+```
+It is more or less normally distributed.Distribution is slighlty right skewed with a large bin extending out of normal curve.
+
+**ACF**
+```{r,ariacf}
+acf_var_arima<-acf(na.omit(train_forecast_arima$residuals),lag.max = 24,plot=FALSE)
+autoplot(acf_var_arima)+labs(x='Lag',y='ACF',title='ACF plot')
+```
+All lags stay inside significant level of autocorrelation
+
+**Residuals**
+```{r,arires}
+autoplot(train_forecast_arima$residuals)+labs(x='Date',y='Residuals',title='Residual plot')
+```
+
+**Forecast for 2 years**
+```{r,arifore}
+final_ts<-ts(pol_ts,start = c(2001,01),end=c(2017,12),frequency = 12)
+final_pol_fit_arima<-auto.arima(final_ts)
+final_forecast_arima<-forecast(final_pol_fit_arima,24,level=c(80,95))
+autoplot(final_forecast_arima)+labs(x='Date',y='ug/m3',title='Forecast of ozone pollutant for 2018 & 2019')
+```
+
+**Forecasted Values**
+```{r,ariforetable,echo=FALSE,results='asis'}
+mon_18_19<-seq(as.Date("2018/1/1"), as.Date("2019/12/1"), "months")
+final_forecast_arima_df<-data.frame(final_forecast_arima)
+arima_forecast_df<-data.frame("date"=mon_18_19,
+                            "Forecast"=final_forecast_arima_df$Point.Forecast,
+                           "Low 80%"=final_forecast_arima_df$Lo.80,"High 80%"=final_forecast_arima_df$Hi.80)
+
+kable(arima_forecast_df)
+```
+
+#ETS
+
+**Training vs Testing**
+```{r,trainvstest}
+train_ts<-ts(pol_ts,start = c(2001,01),end=c(2015,12),frequency = 12)
+train_pol_fit_ets<-ets(train_ts) 
+train_pol_fit_ets
+train_forecast_ets<-forecast:::forecast.ets(train_pol_fit_ets,24)
+```
+Now,we could find that there is almost **alpha value of 0.6** i.e recent weights are observed from the middle of series.Also there is slight effect of seasonality.
+
+**Plot-Traning vs Testing**
+
+* Training period- Jan 2001 to  Dec 2015
+* Testing period - Jan 2016 to Dec 2017
+
+```{r,plottrainvstest}
+train_forecast_ets_df<-data.frame(train_forecast_ets)
+train_forecast_ets_pt_forecast<-train_forecast_ets_df$Point.Forecast
+
+forecast_train<-data.frame("x"=as.Date(pol_flow$date[181:204],format="%Y - %m - %d"),"y"=train_forecast_ets_pt_forecast)
+actual_train<-data.frame("x"=as.Date(pol_flow$date,format="%Y - %m - %d"),"y"=pol_flow$count)
+
+ggplot(forecast_train,aes(x,y))+geom_line(aes(color="First line")) +
+  geom_line(data = actual_train,aes(color="Second line"))+xlab("Year")+ylab("Count")+
+  labs(color="Series")+ggtitle("Training Vs Testing plot")+
+  scale_colour_manual(values = c("red","green"), 
+                      labels=c("Forecast", "Actual"))
+```
+
+**MAPE**
+```{r,mapetest}
+MAPE(pol_flow$count[181:204],train_forecast_ets_pt_forecast)
+```
+We got **4.8%** which is perfect than ARIMA model.
+
+**Ljung-Box Test**
+```{r}
+Box.test(train_forecast_ets$residuals, lag=24, type="Ljung-Box")
+```
+p-Value is too less than 0.05.So we reject null hypothesis.There might be dependencies on values.There can be strong evidence of non-zero autocorrelation.We will have a look at other measures. 
+
+
+**Plot Error Function**
+```{r}
+train_forecast_ets$residuals<-na.omit(train_forecast_ets$residuals)
+plotForecastErrors(train_forecast_ets$residuals)
+```
+The plot shows the residuals have constant variance over time.It is more or less normally distributed.Distribution is roughly centered at zero.
+
+
+**ACF**
+```{r}
+#ACF
+acf_var_ets<-acf(na.omit(train_forecast_ets$residuals),lag.max = 10,plot=FALSE)
+autoplot(acf_var_ets)+labs(x='Lag',y='ACF',title='ACF plot')
+```
+ACF plot shows more irregualrity.Lag 3,4 exceeds the significant level.
+
+
+**Residuals**
+```{r}
+#Residuals
+autoplot(train_forecast_ets$residuals)+labs(x='Date',y='Residuals',title='Residual plot')
+```
+Residuals are roughly constant over zero.
+
+
+**Forecast for 2 years**
+```{r}
+final_ts<-ts(pol_ts,start = c(2001,01),end=c(2017,12),frequency = 12)
+final_pol_fit_ets<-ets(final_ts)
+final_forecast_ets<-forecast:::forecast.ets(final_pol_fit_ets,24)
+autoplot(final_forecast_ets)+labs(x='Date',y='ug/m3',title='Forecast of ozone pollutant for 2018 & 2019')
+```
+
+**Forecasted Values**
+```{r,echo=FALSE,results='asis'}
+mon_18_19<-seq(as.Date("2018/1/1"), as.Date("2019/12/1"), "months")
+final_forecast_ets_df<-data.frame(final_forecast_ets)
+ets_forecast_df<-data.frame("date"=mon_18_19,
+                            "Forecast"=final_forecast_ets_df$Point.Forecast,
+                           "Low 80%"=final_forecast_ets_df$Lo.80,"High 80%"=final_forecast_ets_df$Hi.80)
+
+kable(ets_forecast_df)
+```
+
+#Conclusion
+**Expected AQI health concern in 2018 & 2019**
+```{r}
+ets_forecast_df$colour<- cut(ets_forecast_df$Forecast, breaks = c(-Inf,50,100,150,Inf),
+         labels = c("green", "yellow", "orange","red"))
+
+after_pred<-ggplot(ets_forecast_df,aes(date,Forecast,fill=colour))+geom_bar(stat="identity",position="dodge")+
+geom_text(aes(label = round(Forecast)), position = position_dodge(width = 1),
+            vjust = 1.5, size = 3) +
+scale_x_date(breaks = seq(as.Date("2018-01-01"), as.Date("2019-12-01"), by="1 month"), date_labels = "%b-%y")+
+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="none")+scale_fill_identity()+
+ggtitle("Expected AQI level in 2018 & 2019")
+
+last_two_year<-data.frame("date"=pol_flow$date[181:204],"count"=pol_flow$count[181:204])
+last_two_year$colour<- cut(last_two_year$count, breaks = c(-Inf,50,100,150,Inf),
+         labels = c("green", "yellow", "orange","red"))
+
+before_pred<-ggplot(last_two_year,aes(date,count,fill=colour))+geom_bar(stat="identity",position="dodge")+
+geom_text(aes(label = round(count)), position = position_dodge(width = 1),
+            vjust = 1.5, size = 3) +
+scale_x_date(breaks = seq(as.Date("2016-01-01"), as.Date("2017-12-01"), by="1 month"), date_labels = "%b-%y")+
+theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position="none")+scale_fill_identity()+
+ggtitle("AQI level in 2016 & 2017")
+grid.arrange(before_pred,after_pred,nrow=2)
+```
+*_We could see expected hikes in month of july,august.And seven times in a year,the pollutant reaches to unhealthy level._*
+
+<span style="color:red">**People sensitive to pollutant**</span> have most chance of getting affected between month of **march to september**. 
+
+<span style="color:red">**Throat irritation** & **Coughing**</span> can be the cause for those sensitive people to ozone pollutant. 
+
+From our model,we observed that **ETS stayed strong with accuracy**.And It was able to overcome ARIMA model too.In our model,If there was regular seasonality ,we might have opt for HoltWinters.But ETS displayed its part with weighing observations.
+
+#References
+
+* https://otexts.org/fpp2/
+* http://r-statistics.co/Time-Series-Forecasting-With-R.html
+* https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/
+* https://otexts.org/fpp2/arima-ets.html
+
+**I hope you find this kernel helpful,Please give an** <span style="color:red">**Upvote**</span> **Thanks :)**
+
+
+
+
+
